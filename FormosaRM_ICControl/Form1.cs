@@ -16,6 +16,24 @@ namespace FormosaRM_ICControl
     {
         private IMqttClient mqttClient = null;
         public bool mqttClientConnected = false;
+        static readonly string mqttBroker = "test.mosquitto.org";
+        // static readonly string mqttBroker = "10.50.19.11"; // 長庚大學
+        static readonly int mqttBrokerPort = 1883;
+        static readonly string ClientId = "FormosaVerify-" + Guid.NewGuid().ToString();
+        static readonly string username = "justForVerify";
+        static readonly string password = "none";
+        static readonly string txTopicFmt = "none/FORMOSA00001/{0}/tx";
+        static readonly string[] txDevs = {
+            "70BED5FFFE040001", "70BED5FFFE040002", "70BED5FFFE040003"
+        };
+        static readonly string[] compareRxTopic = {
+                    "none/FORMOSA00001/70bed5fffe040001/rx",
+                    "none/FORMOSA00001/70bed5fffe040002/rx",
+                    "none/FORMOSA00001/70bed5fffe040003/rx",
+                    "none/FORMOSA00001/70BED5FFFE040001/rx",
+                    "none/FORMOSA00001/70BED5FFFE040002/rx",
+                    "none/FORMOSA00001/70BED5FFFE040003/rx"
+        };
 
         public class txInfo
         {
@@ -111,54 +129,35 @@ namespace FormosaRM_ICControl
 
         private void button_Click(object sender, EventArgs e)
         {
-            ICControlObject obj = new ICControlObject();
             if ((mqttClient != null) && (mqttClientConnected)) {
-                string topic = "none/FORMOSA00001/{0}/tx";
                 Button btn = (Button)sender;
                 if (btn.Name.StartsWith("button"))
                 {
+                    ICControlObject obj = new ICControlObject();
                     int ch = int.Parse(btn.Name.Substring("button".Length));
-                    if (ch >= 1 && ch <= 4)
-                    {
-                        settingRefObjChannel(ref obj, ch);
-                        topic = String.Format(topic, "70BED5FFFE040001");
-                    }
-                    else if (ch >= 5 && ch <= 8)
-                    {
-                        settingRefObjChannel(ref obj, ch);
-                        topic = String.Format(topic, "70BED5FFFE040002");
-                    }
-                    else if (ch >= 9 && ch <= 12)
-                    {
-                        settingRefObjChannel(ref obj, ch);
-                        topic = String.Format(topic, "70BED5FFFE040003");
-                    }
+                    int devInx = (ch - 1) / 4;
+                    settingRefObjChannel(ref obj, ch);
+                    string topic = String.Format(txTopicFmt, txDevs[devInx]);
+                    var msg = new MQTTnet.MqttApplicationMessageBuilder()
+                        .WithPayload(JsonConvert.SerializeObject(obj))
+                        .WithTopic(topic)
+                        .WithAtMostOnceQoS()
+                        .Build();
+                    mqttClient.PublishAsync(msg);
+                    string json = JsonConvert.SerializeObject(obj);
+                    debugOutput("topic", topic);
+                    debugOutput("json", json);
                 }
-                var msg = new MQTTnet.MqttApplicationMessageBuilder()
-                    .WithPayload(JsonConvert.SerializeObject(obj))
-                    .WithTopic(topic)
-                    .WithAtMostOnceQoS()
-                    .Build();
-                mqttClient.PublishAsync(msg);
-                string json = JsonConvert.SerializeObject(obj);
-                debugOutput("topic", topic);
-                debugOutput("json", json);
             }
-
         }
 
         private IMqttClientOptions option()
         {
-            string ClientId = "FormosaVerify-" + Guid.NewGuid().ToString();
-            const string BrokerServer = "test.mosquitto.org";
-            const int BrokerPort = 1883;
-            const string username = "justForVerify";
-            const string password = "none";
             debugOutput("opt", ClientId);
             var options = new MqttClientOptionsBuilder()
             .WithClientId(ClientId)
-            .WithTcpServer(BrokerServer, BrokerPort)            
-            .WithCredentials(username, password)          
+            .WithTcpServer(mqttBroker, mqttBrokerPort)
+            .WithCredentials(username, password)
                           //.WithTls()//服務器端沒有啓用加密協議，這裏用tls的會提示協議異常
             .WithCleanSession(false)
             .WithKeepAlivePeriod(TimeSpan.FromSeconds(300))
@@ -186,6 +185,30 @@ namespace FormosaRM_ICControl
                 {
                     Status.Text = "連接到MQTT服務器失敗！";
                 })));
+                debugOutput("err", ex.Message);
+            }
+        }
+
+        private void settingBlubLed(int rm, ref rxEvent refRxE)
+        {
+            if (rm == 0)
+            {
+                RM1_IC01.On = refRxE.@object.Irrigation.channel1;
+                RM1_IC02.On = refRxE.@object.Irrigation.channel2;
+                RM1_IC03.On = refRxE.@object.Irrigation.channel3;
+                RM1_IC04.On = refRxE.@object.Irrigation.channel4;
+            } else if (rm == 1)
+            {
+                RM2_IC01.On = refRxE.@object.Irrigation.channel1;
+                RM2_IC02.On = refRxE.@object.Irrigation.channel2;
+                RM2_IC03.On = refRxE.@object.Irrigation.channel3;
+                RM2_IC04.On = refRxE.@object.Irrigation.channel4;
+            } else if (rm == 2)
+            {
+                RM3_IC01.On = refRxE.@object.Irrigation.channel1;
+                RM3_IC02.On = refRxE.@object.Irrigation.channel2;
+                RM3_IC03.On = refRxE.@object.Irrigation.channel3;
+                RM3_IC04.On = refRxE.@object.Irrigation.channel4;
             }
         }
 
@@ -200,48 +223,25 @@ namespace FormosaRM_ICControl
 
                   message payload:
                         { "applicationID":"2","applicationName":"Formosa-Farm","deviceName":"RM1-IC01","devEUI":"70bed5fffe040001","txInfo":{ "frequency":903900000,"dr":0},"adr":true,"fCnt":29367,"fPort":6,"data":"AAA=","object":{ "Irrigation":{ "channel1":false,"channel2":false,"channel3":false,"channel4":false},"report":"Data"} }
-                 */
-
+                */
                 string topic = e.ApplicationMessage.Topic;
-                //string strPayload = Encoding.ASCII.GetString(e.ApplicationMessage.Payload);
                 string strUtf8Payload = Encoding.UTF8.GetString(e.ApplicationMessage.Payload);
                 var payload = JsonConvert.DeserializeObject<rxEvent>(strUtf8Payload);
-
-                if (0 == String.Compare("none/FORMOSA00001/70bed5fffe040001/rx", topic, true))
+                for (int i = 0; i < 3; i++)
                 {
-                    Invoke(new Action(() =>
+                    if (0 == String.Compare(compareRxTopic[i], topic, true))
                     {
-                        RM1_IC01.On = payload.@object.Irrigation.channel1;
-                        RM1_IC02.On = payload.@object.Irrigation.channel2;
-                        RM1_IC03.On = payload.@object.Irrigation.channel3;
-                        RM1_IC04.On = payload.@object.Irrigation.channel4;
-                    }));
-                }
-                else if (0 == String.Compare("none/FORMOSA00001/70bed5fffe040002/rx", topic, true))
-                {
-                    Invoke(new Action(() =>
-                    {
-                        RM2_IC01.On = payload.@object.Irrigation.channel1;
-                        RM2_IC02.On = payload.@object.Irrigation.channel2;
-                        RM2_IC03.On = payload.@object.Irrigation.channel3;
-                        RM2_IC04.On = payload.@object.Irrigation.channel4;
-                    }));
-                }
-                else if (0 == String.Compare("none/FORMOSA00001/70bed5fffe040003/rx", topic, true))
-                {
-                    Invoke(new Action(() =>
-                    {
-                        RM3_IC01.On = payload.@object.Irrigation.channel1;
-                        RM3_IC02.On = payload.@object.Irrigation.channel2;
-                        RM3_IC03.On = payload.@object.Irrigation.channel3;
-                        RM3_IC04.On = payload.@object.Irrigation.channel4;
-                    }));
+                        Invoke(new Action(() =>
+                        {
+                            settingBlubLed(i, ref payload);
+                        }));
+                    }
                 }
                 debugOutput(e.ApplicationMessage.Topic, strUtf8Payload);
             }
             catch (Exception ex)
             {
-                debugOutput("Rx", ex.ToString());
+                debugOutput("Rx", ex.Message);
             }
         }
 
@@ -253,26 +253,14 @@ namespace FormosaRM_ICControl
             }));
             mqttClientConnected = true;
             MQTTnet.TopicFilter[] topicFilter;
-            topicFilter = new MQTTnet.TopicFilter[6];
-            topicFilter[0] = new MQTTnet.TopicFilterBuilder()
-                .WithTopic("none/FORMOSA00001/70BED5FFFE040001/rx")
+            topicFilter = new MQTTnet.TopicFilter[compareRxTopic.Length];
+            for (int i = 0; i < compareRxTopic.Length; i++)
+            {
+                topicFilter[i] = new MQTTnet.TopicFilterBuilder()
+                .WithTopic(compareRxTopic[i])
                 .Build();
-            topicFilter[1] = new MQTTnet.TopicFilterBuilder()
-                .WithTopic("none/FORMOSA00001/70BED5FFFE040002/rx")
-                .Build();
-            topicFilter[2] = new MQTTnet.TopicFilterBuilder()
-                .WithTopic("none/FORMOSA00001/70BED5FFFE040003/rx")
-                .Build();
-            topicFilter[3] = new MQTTnet.TopicFilterBuilder()
-                .WithTopic("none/FORMOSA00001/70bed5fffe040001/rx")
-                .Build();
-            topicFilter[4] = new MQTTnet.TopicFilterBuilder()
-                .WithTopic("none/FORMOSA00001/70bed5fffe040002/rx")
-                .Build();
-            topicFilter[5] = new MQTTnet.TopicFilterBuilder()
-                .WithTopic("none/FORMOSA00001/70bed5fffe040003/rx")
-                .Build();
-
+                debugOutput("regRxTopic", compareRxTopic[i]);
+            }
             mqttClient.SubscribeAsync(topicFilter);
         }
 
@@ -290,6 +278,4 @@ namespace FormosaRM_ICControl
             System.Diagnostics.Debug.WriteLine(String.Format("{0}:{1}", tag, info));
         }
     }
-
-
 }
