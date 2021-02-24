@@ -17,7 +17,7 @@ namespace FormosaRM_ICControl
         private IMqttClient mqttClient = null;
         public bool mqttClientConnected = false;
         static readonly string mqttBroker = "test.mosquitto.org";
-        // static readonly string mqttBroker = "10.50.19.11"; // 長庚大學
+        //static readonly string mqttBroker = "10.50.19.11"; // 長庚大學
         static readonly int mqttBrokerPort = 1883;
         static readonly string ClientId = "FormosaVerify-" + Guid.NewGuid().ToString();
         static readonly string username = "justForVerify";
@@ -78,52 +78,27 @@ namespace FormosaRM_ICControl
             Task.Run(async () => { await ConnectMqttServerAsync(); });
         }
 
-        private void settingRefObjChannel(ref ICControlObject refObj, int ch)
+        private void settingRefObjChannel(ref ICControlObject refObj, int rm)
         {
-            if (ch >= 1 && ch <= 4)
-            {
-                refObj.@object.Irrigation.channel1 = RM1_IC01.On;
-                refObj.@object.Irrigation.channel2 = RM1_IC02.On;
-                refObj.@object.Irrigation.channel3 = RM1_IC03.On;
-                refObj.@object.Irrigation.channel4 = RM1_IC04.On;
-                if (ch == 1)
-                    refObj.@object.Irrigation.channel1 = !refObj.@object.Irrigation.channel1;
-                else if (ch == 2)
-                    refObj.@object.Irrigation.channel2 = !refObj.@object.Irrigation.channel2;
-                else if (ch == 3)
-                    refObj.@object.Irrigation.channel3 = !refObj.@object.Irrigation.channel3;
-                else if (ch == 4)
-                    refObj.@object.Irrigation.channel4 = !refObj.@object.Irrigation.channel4;
+            if (rm == 1) {
+                refObj.@object.Irrigation.channel1 = toggleSwitch1.Checked;
+                refObj.@object.Irrigation.channel2 = toggleSwitch2.Checked;
+                refObj.@object.Irrigation.channel3 = toggleSwitch3.Checked;
+                refObj.@object.Irrigation.channel4 = toggleSwitch4.Checked;
             }
-            else if ( ch >= 5 && ch <= 8)
+            else if ( rm == 2)
             {
-                refObj.@object.Irrigation.channel1 = RM2_IC01.On;
-                refObj.@object.Irrigation.channel2 = RM2_IC02.On;
-                refObj.@object.Irrigation.channel3 = RM2_IC03.On;
-                refObj.@object.Irrigation.channel4 = RM2_IC04.On;
-                if (ch == 5)
-                    refObj.@object.Irrigation.channel1 = !refObj.@object.Irrigation.channel1;
-                else if (ch == 6)
-                    refObj.@object.Irrigation.channel2 = !refObj.@object.Irrigation.channel2;
-                else if (ch == 7)
-                    refObj.@object.Irrigation.channel3 = !refObj.@object.Irrigation.channel3;
-                else if (ch == 8)
-                    refObj.@object.Irrigation.channel4 = !refObj.@object.Irrigation.channel4;
+                refObj.@object.Irrigation.channel1 = toggleSwitch5.Checked;
+                refObj.@object.Irrigation.channel2 = toggleSwitch6.Checked;
+                refObj.@object.Irrigation.channel3 = toggleSwitch7.Checked;
+                refObj.@object.Irrigation.channel4 = toggleSwitch8.Checked;
             }
-            else if ( ch >= 9 && ch <= 12)
+            else if ( rm == 3)
             {
-                refObj.@object.Irrigation.channel1 = RM3_IC01.On;
-                refObj.@object.Irrigation.channel2 = RM3_IC02.On;
-                refObj.@object.Irrigation.channel3 = RM3_IC03.On;
-                refObj.@object.Irrigation.channel4 = RM3_IC04.On;
-                if (ch == 9)
-                    refObj.@object.Irrigation.channel1 = !refObj.@object.Irrigation.channel1;
-                else if (ch == 10)
-                    refObj.@object.Irrigation.channel2 = !refObj.@object.Irrigation.channel2;
-                else if (ch == 11)
-                    refObj.@object.Irrigation.channel3 = !refObj.@object.Irrigation.channel3;
-                else if (ch == 12)
-                    refObj.@object.Irrigation.channel4 = !refObj.@object.Irrigation.channel4;
+                refObj.@object.Irrigation.channel1 = toggleSwitch9.Checked;
+                refObj.@object.Irrigation.channel2 = toggleSwitch10.Checked;
+                refObj.@object.Irrigation.channel3 = toggleSwitch11.Checked;
+                refObj.@object.Irrigation.channel4 = toggleSwitch12.Checked;
             }
         }
 
@@ -134,10 +109,9 @@ namespace FormosaRM_ICControl
                 if (btn.Name.StartsWith("button"))
                 {
                     ICControlObject obj = new ICControlObject();
-                    int ch = int.Parse(btn.Name.Substring("button".Length));
-                    int devInx = (ch - 1) / 4;
-                    settingRefObjChannel(ref obj, ch);
-                    string topic = String.Format(txTopicFmt, txDevs[devInx]);
+                    int rm = int.Parse(btn.Name.Substring("button".Length));
+                    settingRefObjChannel(ref obj, rm);
+                    string topic = String.Format(txTopicFmt, txDevs[rm-1]);
                     var msg = new MQTTnet.MqttApplicationMessageBuilder()
                         .WithPayload(JsonConvert.SerializeObject(obj))
                         .WithTopic(topic)
