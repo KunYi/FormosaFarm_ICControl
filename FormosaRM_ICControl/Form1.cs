@@ -16,10 +16,10 @@ namespace FormosaRM_ICControl
     {
         private IMqttClient mqttClient = null;
         public bool mqttClientConnected = false;
-        static readonly string mqttBroker = "test.mosquitto.org";
-        //static readonly string mqttBroker = "10.50.19.11"; // 長庚大學
+        //static readonly string mqttBroker = "test.mosquitto.org"; // for testing
+        static readonly string mqttBroker = "10.50.19.11"; // 長庚大學
         static readonly int mqttBrokerPort = 1883;
-        static readonly string ClientId = "FormosaVerify-" + Guid.NewGuid().ToString();
+        static readonly string ClientId = "FormosaICVerify-" + Guid.NewGuid().ToString();
         static readonly string username = "justForVerify";
         static readonly string password = "none";
         static readonly string txTopicFmt = "none/FORMOSA00001/{0}/tx";
